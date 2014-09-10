@@ -1,0 +1,36 @@
+input {
+  #Ouverture en entrée d'un port d'écoute utilisant le protocol syslog
+  tcp {
+    port => 5544
+    type => syslog
+  }
+  udp {
+    port => 5544
+    type => syslog
+  }
+}
+ 
+filter {
+  # Traitement type syslog, le type étant marqué sur les données entrant par nos ports de type syslog
+  if [type] == "syslog" {
+    grok {
+      # Si on ne veut pas garder le message non traité
+      overwrite => "message"
+      match => {
+        # rsyslong envoi des messages de type : <Numero>Ligne Syslog avec le message
+        "message" => "^(?:<%{NONNEGINT:syslog_pri}>)?%{SYSLOGBASE2} %{GREEDYDATA:message}"
+        "message" => "%{SYSLOG5424PRI}%{SYSLOGBASE2} %{DATA:message}"
+      }
+      # on ajoute des tags perso, pratique pour filtrer dans l'interface kibana
+      add_tag => [ "syslog", "grokked" ]
+    }
+    }
+}
+ 
+ 
+output {
+# on stock dans elasticsearch
+  elasticsearch {
+    host => "localhost"
+  }
+}
